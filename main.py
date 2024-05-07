@@ -2,8 +2,6 @@
 ## Papa Pizza Ordering System
 ## By Samuel Scott
 
-import tkinter
-
 
 # Rounding
 def round_to(n, precision):
@@ -15,34 +13,12 @@ def round_to_05(n):
     return round_to(n, 0.05)
 
 
-# Pizza topping and base customizations objects
-# Classes contain attributes to help organise the pizza customization options
-class customisation:
-    class toppings:
-        Light = "light"
-        Normal = "normal"
-        Extra = "extra"
-
-    class pizza_base:
-        Normal = "normal"
-        Gluten_Free = "gluten_free"
-
-
 # Parent pizza object
 class Pizza:
     def __init__(self, name, price):
         self.name = name
         self.price = price
         self.quantity = 1
-
-        self.toppings_amount = customisation.toppings.Normal
-        self.pizza_base = customisation.pizza_base.Normal
-
-    def set_toppings_amount(self, value):
-        self.toppings_amount = value
-
-    def set_pizza_base(self, value):
-        self.pizza_base = value
 
     def set_item_quantity(self, value):
         self.quantity = value
@@ -84,22 +60,27 @@ class Sale:
         self._order = _order
         self.total_price = 0
 
-    def calculate_price(self, discounted):
-        sale_summary = {"total_price": 0, "discount_received": 0, "gst_amount": 0, "subtotal_price": 0}
+    def calculate_price(self, discounted, delivery):
+        sale_summary = {"total_price": 0, "discount_received": 0, "gst_amount": 0, "subtotal_price": 0, "delivery": 0}
         self.get_total_sale_price()
-        price = self.total_price
+        discount = 0
         sale_summary["subtotal_price"] = self.total_price
         total_price = self.total_price
 
-        if discounted:
+        if discounted or total_price > 100:
+            print("Applying 5% discount")
             discount = self.calculate_discount()
             discount = round_to_05(discount)
             sale_summary["discount_received"] = discount
             total_price -= discount
 
+        if delivery:
+            total_price += 8
+            sale_summary["delivery"] = 8
+
         gst_amount = self.calculate_gst()
 
-        sale_summary["gst_amount"] = discount
+        sale_summary["gst_amount"] = gst_amount
 
         total_price += gst_amount
 
@@ -109,7 +90,7 @@ class Sale:
 
     def get_total_sale_price(self):
         for item in self._order.items.values():
-            self.total_price += item.price
+            self.total_price += (item.price * item.quantity)
 
     def calculate_gst(self):
         # Calculate GST and round it to the nearest 5 cents
@@ -124,11 +105,6 @@ class Sale:
         return discount
 
 
-class DailySales(Sale):
-    def __init__(self):
-        Sale.__init__(self)
-
-
 class Order:
     def __init__(self):
         self.customer_name = ""
@@ -139,8 +115,6 @@ class Order:
         self.customer_name = name
 
     def add_item(self, item: Pizza):
-        # Initialize item
-        item = item()
         # Assigns each item with an item id; the item id is the position
         # of the which the item is inserted into the dictionary.
         item_id = 1 + len(self.items)
@@ -148,7 +122,16 @@ class Order:
         return item_id
 
     def set_item_quantity(self, item_id, quantity):
-        self.items[item_id].set_pizza_quantity(quantity)
+        if not item_id in self.items:
+            print("Item doesn't exist")
+            return
+        self.items[item_id].set_item_quantity(quantity)
+
+    def del_item(self, item_id):
+        if not item_id in self.items:
+            print("Item doesn't exist")
+            return
+        self.items.pop(item_id)
 
     def list_items(self):
         formatted_items = ""
@@ -157,26 +140,209 @@ class Order:
         return formatted_items
 
 
-class MainApplication(tkinter.Tk):
-    def __init__(self, *args, **kwargs):
-        tkinter.Tk.__init__(self, *args, **kwargs)
-        self.title("Papa Pizza Ordering System")
-
-        self.mainloop()
+pizzas_available = {
+    "pepperoni": Pepperoni,
+    "chicken": ChickenSupreme,
+    "bbqmeat": BBQMeatlovers,
+    "vegsupreme": VegSupreme,
+    "hawaiian": Hawaiian,
+    "margherita": Margherita
+}
 
 
 def main():
-    # app = MainApplication()
-    order = Order()
+    # Initialize order
+    order = None
+    daily_sales = 0
 
-    order.add_item(Margherita)
-    order.add_item(Pepperoni)
+    running = True
 
-    print(order.list_items())
+    while running:
+        print(
+            f"---Pizza Ordering System---\n"
+            f"Daily Sales: ${daily_sales}\n"
+            "1. Start a new order\n"
+            "2. quit application\n"
+        )
 
-    sale = Sale(order)
+        main_option = input("Option: ")
 
-    print(sale.calculate_price(True))
+        if main_option == "2":
+            running = False
+            continue
+
+        elif main_option == "1":
+            print("--////--\nNew order started!\n")
+            order = Order()
+            processed = False
+
+            while not processed:
+                # Figuring out what pizzas they want and adding it to the objects
+                print(order.list_items())
+                print(
+                    "1. Add pizza\n"
+                    "2. Change quantity of pizza\n"
+                    "3. Delete pizza\n"
+                    "4. Process Order\n"
+                    "5. Delete order and go back to main menu\n"
+                )
+
+                option = input("Option: ")
+
+                if option == "4":
+                    # Processing order option
+                    print("Are you sure you would like to process this order? (y/n)")
+
+                    process_option = ""
+
+                    while not process_option == "n":
+                        process_option = input("Please type 'y' for yes and 'n' for no: ").lower()
+
+                        if process_option == "y":
+                            print("Processing order")
+                            processed = True
+                            break
+                    continue
+
+                elif option == "5":
+                    # Deleting order option
+                    print("Are you sure you would like to delete this order? (y/n)")
+
+                    delete_option = ""
+
+                    while not delete_option == "n":
+                        delete_option = input("Please type 'y' for yes and 'n' for no: ").lower()
+
+                        if delete_option == "y":
+                            print("Deleted order")
+                            processed = True
+                            order = None
+                            break
+                    continue
+
+                elif option == "1":
+                    # Adding pizza option
+                    pizzas_available_string = "\n---Pizza available---\nUse keyword in bracket to add that pizza.\n"
+                    for pizza_keyword in pizzas_available.keys():
+                        # Initialize object to get pizza name and price
+                        pizza = pizzas_available[pizza_keyword]()
+                        pizzas_available_string += f"{pizza.name} ({pizza_keyword}) - {pizza.price}\n"
+                    print(pizzas_available_string)
+
+                    pizza_option = ""
+
+                    while not pizza_option in pizzas_available.keys():
+                        pizza_option = input("Pizza option (type `cancel` to cancel adding pizza): ").lower()
+                        if pizza_option == "cancel":
+                            print("Adding pizza cancelled")
+                            break
+
+                    if not pizza_option:
+                        continue
+
+                    quantity_amount = None
+
+                    while not quantity_amount:
+                        try:
+                            if quantity_amount == 0:
+                                print("Cannot set quantity to 0")
+                            quantity_amount = int(input("Quantity: "))
+                        except ValueError:
+                            # Ensure value is an interger
+                            print("Must be an interger")
+
+                    # Initialize to get pizza name and price and add it to the order
+                    pizza = pizzas_available[pizza_option]()
+                    pizza.set_item_quantity(quantity_amount)
+                    order.add_item(pizza)
+                    print(f"Adding {pizza.name} - {pizza.price}")
+
+                elif option == "2":
+                    # Set quantity from item id
+                    item_id = None
+
+                    while not item_id:
+                        try:
+                            item_id = int(input("Item ID: "))
+                        except ValueError:
+                            # Ensure value is an interger
+                            print("Must be an interger")
+
+                    quantity_amount = None
+
+                    while not quantity_amount:
+                        try:
+                            quantity_amount = int(input("Quantity: "))
+                        except ValueError:
+                            # Ensure value is an interger
+                            print("Must be an interger")
+
+                    pizza = order.items[item_id]
+                    print(f"Changed {pizza.name} quantity to {quantity_amount}, item_id: {item_id}")
+
+                    order.set_item_quantity(item_id, quantity_amount)
+
+                elif option == "3":
+                    # Delete pizza from item id
+                    item_id = None
+
+                    while not item_id:
+                        try:
+                            item_id = int(input("Item ID: "))
+                        except ValueError:
+                            # Ensure value is an interger
+                            print("Must be an interger")
+
+                    pizza = order.items[item_id]
+                    print(f"Deleted {pizza.name}, item_id: {item_id}")
+
+                    order.del_item(item_id)
+
+            # If the order was deleted continue to the main loop and main menu
+            if not order:
+                continue
+
+            # Processing order and checkout
+
+            sale = Sale(order)
+
+            print("Do you have a membership with us: ")
+
+            membership = False
+
+            has_membership = ""
+
+            while not has_membership == "n":
+                has_membership = input("Please type 'y' for yes and 'n' for no: ").lower()
+
+                if has_membership == "y":
+                    membership = True
+                    break
+
+            print("Is this order being delivered: ")
+
+            _delivery = False
+
+            is_delivery = ""
+
+            while not is_delivery == "n":
+                is_delivery = input("Please type 'y' for yes and 'n' for no: ").lower()
+
+                if is_delivery == "y":
+                    _delivery = True
+                    break
+
+            sale_summary = sale.calculate_price(discounted=membership, delivery=_delivery)
+
+            print(f"Sale Summary: {sale_summary}")
+
+            daily_sales += sale_summary["total_price"]
+
+        else:
+            print("Please enter a valid option.\n")
+            continue
+
+    print("Thanks for using our Pizza Ordering System")
 
 
 if __name__ == "__main__":
